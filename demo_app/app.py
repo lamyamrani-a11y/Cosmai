@@ -49,6 +49,22 @@ a:hover { text-decoration: underline; }
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+/* 1. Section titles (h2, h3) in pinky-purple */
+h2, h3 {
+  color: #d47ad4 !important;   /* pick your shade */
+}
+
+/* 4. Complementary products box */
+.comps {
+  border-left: 3px solid #ff4d4d;
+  padding-left: 0.6rem;
+  margin-top: 0.5rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.title("Looks for My Kit — Demo")
 st.caption("Upload your kit CSV, match to catalog, and discover tutorials that use your products (with jump-to timestamps).")
 
@@ -180,13 +196,14 @@ if kit_file is None:
 kit_raw = pd.read_csv(kit_file)
 matched_all, matched_keep = match_kit_to_catalog(kit_raw, catalog, min_score=st.sidebar.slider("Min match score", 50, 95, 70, 1))
 
-st.subheader("2) Kit → Catalog matching")
-c1, c2 = st.columns([2,1])
-with c1:
-    st.dataframe(matched_keep[["Brand","Product Name","Product Type","Shade Name","Matched Brand","Matched Product Name","Match Score"]])
-with c2:
-    st.metric("Items recognized", len(matched_keep))
-    st.caption("Lower the match threshold in the sidebar if recall is low.")
+with st.expander("2) Kit → Catalog matching", expanded=True):
+    c1, c2 = st.columns([2,1])
+    with c1:
+        st.dataframe(matched_keep[["Brand","Product Name","Product Type","Shade Name",
+                                   "Matched Brand","Matched Product Name","Match Score"]])
+    with c2:
+        st.metric("Items recognized", len(matched_keep))
+        st.caption("Lower the match threshold in the sidebar if recall is low.")
 
 owned_keys = set(matched_keep["key"])
 
@@ -220,45 +237,36 @@ st.caption(f"Data source: **{content_source}**")
 all_items = df.groupby("videoId").apply(lambda g: g.to_dict("records")).to_dict()
 
 # Cards
-for _, R in rank.head(30).iterrows():
-    vid = R["videoId"]; title = R["title"]
-    st.markdown(f"### {title} &nbsp;&nbsp; [:small_blue_diamond: Open](https://www.youtube.com/watch?v={vid})")
-    k1, k2, k3 = st.columns(3)
-    k1.metric("Coverage", f"{int(R['coverage']*100)}%")
-    k2.metric("Items used", int(R["used_items"]))
-    k3.metric("Steps", int(R["used_steps"]))
+videos = rank.head(30).to_dict("records")
+for i in range(0, len(videos), 2):
+    cols = st.columns(2)
+    for col, R in zip(cols, videos[i:i+2]):
+        with col:
+            vid   = R["videoId"]; title = R["title"]
+            st.markdown(f"### {title} &nbsp; [:small_blue_diamond: Open](https://www.youtube.com/watch?v={vid})")
+            k1, k2, k3 = st.columns(3)
+            k1.metric("Coverage", f"{int(R['coverage']*100)}%")
+            k2.metric("Items used", int(R["used_items"]))
+            k3.metric("Steps", int(R["used_steps"]))
 
-    # My kit matches (chronological)
-    sub = hits[hits["videoId"]==vid].sort_values("sec")
-    st.write("**Your kit items in this video**")
-    for _, it in sub.iterrows():
-        step   = it.get("step","")
-        brand  = it.get("brand","")
-        prod   = it.get("product","")
-        ptype  = it.get("product_type","")
-        shade  = it.get("shade","")
-        sec    = it.get("sec", None)
-        link   = yt_link(vid, sec)
-        meta   = " · ".join([x for x in [ptype, f"Shade: {shade}" if shade else ""] if x])
-        st.markdown(f"- **{brand} — {prod}**  \n  <span class='small'>{step} {meta}</span> — [Jump {int(sec) if pd.notna(sec) else 'open'}s]({link})", unsafe_allow_html=True)
+            # My kit matches
+            sub = hits[hits["videoId"]==vid].sort_values("sec")
+            st.write("**Your kit items in this video**")
+            for _, it in sub.iterrows():
+                ...
+            
+            # Complementary products
+            comps = [d for d in all_items.get(vid, []) if d["key"] not in owned_keys]
+            if comps:
+                st.markdown("<div class='comps'>**Complementary products**</div>", unsafe_allow_html=True)
+                seen = {}
+                for d in comps:
+                    key = d["key"]
+                    if key in seen: continue
+                    seen[key] = True
+                    brand = d.get("brand",""); prod = d.get("product","")
+                    st.markdown(f"- **{brand} — {prod}**", unsafe_allow_html=True)
 
-    # Complementary products = all - owned
-    comps = [d for d in all_items.get(vid, []) if d["key"] not in owned_keys]
-    if comps:
-        st.write("**Complementary products** (others used in this tutorial)")
-        # de-dupe per key and keep earliest time
-        seen = {}
-        for d in sorted(comps, key=lambda x: (x.get("sec") if pd.notna(x.get("sec")) else 9e9)):
-            key = d["key"]
-            if key in seen: continue
-            seen[key] = True
-            brand = d.get("brand",""); prod = d.get("product",""); step = d.get("step","")
-            ptype = d.get("product_type",""); shade = d.get("shade","")
-            link  = yt_link(vid, d.get("sec"))
-            meta  = " · ".join([x for x in [ptype, f"Shade: {shade}" if shade else ""] if x])
-            st.markdown(f"- **{brand} — {prod}**  \n  <span class='small'>{step} {meta}</span> — [Jump]({link})", unsafe_allow_html=True)
-
-    st.markdown("<div class='hr'></div>", unsafe_allow_html=True)
 
 # ---------- Export: HTML report ----------
 def build_html_report(rank_df, hits_df, all_df, owned_keys):
