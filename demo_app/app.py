@@ -48,6 +48,29 @@ a:hover { text-decoration: underline; }
 .hr { height: 1px; background: #2a3146; margin: .75rem 0; }
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+/* keep default heading color (remove earlier override if any) */
+h2, h3 { color: inherit !important; }
+
+/* Tile (card) look with a light gray border */
+.tile {
+  padding: 1rem;
+  background: #121623;
+  border: 1px solid #2f3547;   /* light gray outline */
+  border-radius: 16px;
+  margin-bottom: 1rem;
+}
+
+/* “Complementary products” red line */
+.comps {
+  border-left: 3px solid #ff4d4d;
+  padding-left: 0.6rem;
+  margin-top: 0.6rem;
+}
+.small { font-size: 0.85rem; color: #8b93a7; }
+</style>
+""", unsafe_allow_html=True) 
 
 st.markdown("""
 <style>
@@ -199,8 +222,10 @@ matched_all, matched_keep = match_kit_to_catalog(kit_raw, catalog, min_score=st.
 with st.expander("2) Kit → Catalog matching", expanded=True):
     c1, c2 = st.columns([2,1])
     with c1:
-        st.dataframe(matched_keep[["Brand","Product Name","Product Type","Shade Name",
-                                   "Matched Brand","Matched Product Name","Match Score"]])
+        st.dataframe(
+            matched_keep[["Brand","Product Name","Product Type","Shade Name",
+                          "Matched Brand","Matched Product Name","Match Score"]]
+        )
     with c2:
         st.metric("Items recognized", len(matched_keep))
         st.caption("Lower the match threshold in the sidebar if recall is low.")
@@ -237,36 +262,94 @@ st.caption(f"Data source: **{content_source}**")
 all_items = df.groupby("videoId").apply(lambda g: g.to_dict("records")).to_dict()
 
 # Cards
+def render_item_line(vid, step, brand, prod, ptype, shade, sec):
+    # Safe strings (no Ellipsis)
+    step  = str(step or "")
+    brand = str(brand or "")
+    prod  = str(prod or "")
+    ptype = str(ptype or "")
+    shade = str(shade or "")
+    # time + link
+    try:
+        tsec = int(float(sec))
+        ttxt = f"{tsec}s"
+        link = yt_link(vid, tsec)
+    except Exception:
+        ttxt = "open"
+        link = yt_link(vid, None)
+    meta = " · ".join([x for x in [ptype, f"Shade: {shade}" if shade else ""] if x])
+    # Render
+    st.markdown(
+        f"- **{brand} — {prod}**  \n"
+        f"  <span class='small'>{step} {meta}</span> — "
+        f"[Jump {ttxt}]({link})",
+        unsafe_allow_html=True
+    )
+
+st.subheader("3) Videos that use your products")
+st.caption(f"Data source: {content_source}")
+
 videos = rank.head(30).to_dict("records")
 for i in range(0, len(videos), 2):
     cols = st.columns(2)
     for col, R in zip(cols, videos[i:i+2]):
         with col:
-            vid   = R["videoId"]; title = R["title"]
+            vid   = R["videoId"]
+            title = R["title"]
+
+            # Tile wrapper
+            st.markdown("<div class='tile'>", unsafe_allow_html=True)
+
+            # Header
             st.markdown(f"### {title} &nbsp; [:small_blue_diamond: Open](https://www.youtube.com/watch?v={vid})")
             k1, k2, k3 = st.columns(3)
             k1.metric("Coverage", f"{int(R['coverage']*100)}%")
             k2.metric("Items used", int(R["used_items"]))
             k3.metric("Steps", int(R["used_steps"]))
 
-            # My kit matches
-            sub = hits[hits["videoId"]==vid].sort_values("sec")
+            # Your kit matches (chronological, no Ellipsis)
             st.write("**Your kit items in this video**")
-            for _, it in sub.iterrows():
-                ...
-            
-            # Complementary products
+            sub = hits[hits["videoId"] == vid].sort_values("sec")
+            if sub.empty:
+                st.caption("No kit items detected in this video.")
+            else:
+                for _, it in sub.iterrows():
+                    render_item_line(
+                        vid=vid,
+                        step  = it.get("step",""),
+                        brand = it.get("brand",""),
+                        prod  = it.get("product",""),
+                        ptype = it.get("product_type",""),
+                        shade = it.get("shade",""),
+                        sec   = it.get("sec", None),
+                    )
+
+            # Complementary products with red line
             comps = [d for d in all_items.get(vid, []) if d["key"] not in owned_keys]
             if comps:
                 st.markdown("<div class='comps'>**Complementary products**</div>", unsafe_allow_html=True)
-                seen = {}
-                for d in comps:
+                seen = set()
+                # sort by earliest time and dedupe
+                comps_sorted = sorted(
+                    comps, key=lambda x: (x.get("sec") if pd.notna(x.get("sec")) else 9e9)
+                )
+                for d in comps_sorted:
                     key = d["key"]
-                    if key in seen: continue
-                    seen[key] = True
-                    brand = d.get("brand",""); prod = d.get("product","")
-                    st.markdown(f"- **{brand} — {prod}**", unsafe_allow_html=True)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    render_item_line(
+                        vid=vid,
+                        step  = d.get("step",""),
+                        brand = d.get("brand",""),
+                        prod  = d.get("product",""),
+                        ptype = d.get("product_type",""),
+                        shade = d.get("shade",""),
+                        sec   = d.get("sec", None),
+                    )
 
+            # Close tile
+            st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------- Export: HTML report ----------
 def build_html_report(rank_df, hits_df, all_df, owned_keys):
