@@ -3,8 +3,11 @@ import pandas as pd
 import streamlit as st
 from rapidfuzz import fuzz, process
 
-# ---------- Config ----------
-DATA_DIR = pathlib.Path("data")
+import pathlib
+
+APP_DIR  = pathlib.Path(__file__).parent
+DATA_DIR = APP_DIR / "data"
+
 CAT_CSV  = DATA_DIR / "sku_catalog.csv"
 ROUT_CSV = DATA_DIR / "routine_per_video.csv"
 MENT_CSV = DATA_DIR / "mentions.csv"
