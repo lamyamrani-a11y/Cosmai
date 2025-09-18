@@ -1,16 +1,16 @@
-CT	Charlotte Tilbury	0.6
-Tilbury	Charlotte Tilbury	0.8
 ABH	Anastasia Beverly Hills	0.9
-Kat Von D	KVD Beauty	1.0
-UD	Urban Decay	0.7
-RB	Rare Beauty	0.7
 Hills	Anastasia Beverly Hills	0.7
 Beautyblender	Beautyblender	0.7
+Bobby Brown	Bobbi Brown	1.0
 Brown	Bobbi Brown	0.7
 Chanel	Chanel	0.7
+CT	Charlotte Tilbury	0.6
+Tilbury	Charlotte Tilbury	0.8
+Tilbury	Charlotte Tilbury	0.7
 Clarins	Clarins	0.7
 Clinique	Clinique	0.7
 Dior	Dior	0.7
+e.l.f.	e.l.f.	0.7
 EcoTools	EcoTools	0.7
 Lauder	Estée Lauder	0.7
 Armani	Giorgio Armani	0.7
@@ -19,6 +19,7 @@ Glossier	Glossier	0.7
 Guerlain	Guerlain	0.7
 Hourglass	Hourglass	0.7
 Japonesque	Japonesque	0.7
+Kat Von D	KVD Beauty	1.0
 L'Oréal	L'Oréal	0.7
 Paris	L'Oréal Paris	0.7
 Lancôme	Lancôme	0.7
@@ -30,6 +31,7 @@ Morphe	Morphe	0.7
 NARS	NARS	0.7
 NYX	NYX	0.7
 Labs	Pat McGrath Labs	0.7
+RB	Rare Beauty	0.7
 Techniques	Real Techniques	0.7
 Revlon	Revlon	0.7
 Collection	Sephora Collection	0.7
@@ -38,7 +40,8 @@ Smashbox	Smashbox	0.7
 Stila	Stila	0.7
 Tarte	Tarte	0.7
 Faced	Too Faced	0.7
+two-faced	Too Faced	1.0
 Decay	Urban Decay	0.7
+UD	Urban Decay	0.7
 Laurent	Yves Saint Laurent	0.7
 Zoeva	Zoeva	0.7
-e.l.f.	e.l.f.	0.7
